@@ -27,3 +27,8 @@ variable "node_security_group_id" {
   description = "Security group ID for the EKS worker nodes"
   type        = string
 }
+
+variable "github_actions_role_arn" {
+  description = "ARN of the GitHub Actions IAM role, for granting it cluster access"
+  type        = string
+}

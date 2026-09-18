@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1   # Ingress uses this specific API group
+kind: Ingress
+metadata:
+  name: 2048-ingress                        # A name for this Ingress
+  namespace: app                    # Must match your Service's namespace
+  labels:
+    app: 2048-app
+    environment: production
+    team: platform
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod   # Tells CertManager which ClusterIssuer to use for this Ingress
+    kubernetes.io/ingress.class: nginx     # Tells Kubernetes which Ingress Controller should handle this
+
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - eks.yameen.click                      # Your actual domain
+      secretName: 2048-tls              # Where CertManager will store the issued certificate
+  rules:
+    - host: eks.yameen.click                     # Same domain as above
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: 2048-service            # Your Service's name
+                port:
+                  number: 80        # Your Service's port

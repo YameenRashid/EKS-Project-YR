@@ -161,7 +161,10 @@ resource "aws_iam_role" "github_actions" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:YameenRashid/EKS-Project-YR:*"
+            "token.actions.githubusercontent.com:sub" = [
+              "repo:YameenRashid/EKS-Project-YR:*",
+              "repo:YameenRashid@*/EKS-Project-YR@*:*"
+            ]
           }
         }
       }
@@ -196,4 +199,53 @@ resource "aws_iam_role_policy_attachment" "github_actions_s3" {
 resource "aws_iam_role_policy_attachment" "github_actions_dynamodb" {
   role       = aws_iam_role.github_actions.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "github_actions_ecr" {
+  role       = aws_iam_role.github_actions.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+}
+
+resource "aws_iam_policy" "github_actions_eks_manage" {
+  name = "github-actions-eks-manage-policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "eks:DescribeCluster",
+          "eks:ListClusters",
+          "eks:CreateCluster",
+          "eks:DeleteCluster",
+          "eks:UpdateClusterConfig",
+          "eks:UpdateClusterVersion",
+          "eks:TagResource",
+          "eks:UntagResource",
+          "eks:DescribeNodegroup",
+          "eks:CreateNodegroup",
+          "eks:DeleteNodegroup",
+          "eks:UpdateNodegroupConfig",
+          "eks:ListNodegroups",
+          "eks:AssociateAccessPolicy",
+          "eks:CreateAccessEntry",
+          "eks:DeleteAccessEntry",
+          "eks:DescribeAccessEntry",
+          "eks:ListAccessEntries",
+          "eks:ListAssociatedAccessPolicies"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = {
+    Name = "github-actions-eks-manage-policy"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "github_actions_eks_manage" {
+  role       = aws_iam_role.github_actions.name
+  policy_arn = aws_iam_policy.github_actions_eks_manage.arn
 }

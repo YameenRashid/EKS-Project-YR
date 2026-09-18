@@ -45,3 +45,19 @@ resource "aws_eks_access_policy_association" "access_policy_association" {
     type = "cluster"
   }
 }
+
+resource "aws_eks_access_entry" "github_actions" {
+  cluster_name  = aws_eks_cluster.yr_eks_cluster.name
+  principal_arn = var.github_actions_role_arn
+  type          = "STANDARD"
+}
+
+resource "aws_eks_access_policy_association" "github_actions" {
+  cluster_name  = aws_eks_cluster.yr_eks_cluster.name
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+  principal_arn = var.github_actions_role_arn
+
+  access_scope {
+    type = "cluster"
+  }
+}

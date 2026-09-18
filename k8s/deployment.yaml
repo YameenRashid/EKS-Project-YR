@@ -1,0 +1,70 @@
+apiVersion: apps/v1        # The API version this resource type uses - Deployments use apps/v1
+kind: Deployment           # The TYPE of object this is - tells Kubernetes "manage this as a Deployment"
+metadata:                  # Metadata about the deployment itself - its name, namespace, labels
+  name: eks-deployment      # Name of this Deployment - how you'll refer to it via kubectl
+  namespace: app            # Which namespace this lives in - keeps your app isolated from cluster infra (ingress-nginx, cert-manager, etc.)
+  labels:                   # Labels on the Deployment object itself (separate from the pod labels below)
+    app: 2048-app           # Identifies which app this Deployment belongs to
+    environment: production # Marks which environment this is running in - useful once you have more than one
+    team: platform          # Records who owns this resource - good practice so anyone can see who's responsible
+
+spec:                      # The spec section describes the desired state of the Deployment
+  replicas: 2               # How many copies of the pod you want running at any given time - this is the "desired state" of the Deployment
+  selector:                 # The selector section defines how the Deployment finds which pods to manage - it matches the labels on the pods
+    matchLabels:            # The Deployment will manage pods that have these labels
+      app: 2048-app         # The pod must have this label to be managed by
+
+  template:                 # The template section describes the pods that will be created by this Deployment
+    metadata:               # Metadata about the pods themselves - their labels, annotations, etc.
+      labels:               # Labels on the pods themselves - these are what the Deployment uses to find them
+        app: 2048-app       # The pod must have this label to be managed
+        environment: production # Marks which environment this pod is running in
+
+    spec:                   # The spec section describes the desired state of the pods themselves
+      topologySpreadConstraints: # The topologySpreadConstraints section defines how the pods should be spread across the cluster to ensure high availability and fault tolerance
+        - maxSkew: 1            # The maximum skew (difference) in the number of pods across the specified topology domains (in this case, zones). A maxSkew of 1 means that the difference in the number of pods between any two zones should not exceed 1.
+          topologyKey: topology.kubernetes.io/zone # The key that defines the topology domain. In this case, it's the zone of the node.
+          whenUnsatisfiable: DoNotSchedule # If the constraint cannot be satisfied, do not schedule the pod.
+          labelSelector:         # The label selector defines which pods this constraint applies to
+            matchLabels:         # The pods must have these labels to be considered by this constraint
+              app: 2048-app      # The pod must have this label to be considered by this constraint
+
+      securityContext:       # The security context for the container
+        runAsNonRoot: true  # Run the container as a non-root user for security best practices
+        runAsUser: 1000      # Run the container as user ID 1000
+        fsGroup: 2000         # Set the group ID for the container's filesystem to 2000
+      
+      containers:
+        - name: 2048-app                          # Name for this container within the pod
+          image: 666109694156.dkr.ecr.eu-west-2.amazonaws.com/yr-eks-ecr:v1                          # Your ECR image + tag
+          ports:
+            - containerPort: 3000              # Port the app listens on inside the container
+          resources:                          # Resource requests/limits - prevents one pod starving the node
+            requests:                         # Minimum guaranteed resources - scheduler uses this to place the pod
+              memory: 64Mi                     # e.g. "64Mi"
+              cpu: 100m                        # e.g. "100m" (100 millicores = 0.1 vCPU)
+            limits:                           # Hard cap - pod gets killed if it exceeds the memory limit
+              memory: 128Mi
+              cpu: 200m
+      
+          livenessProbe:                    # "Is this pod alive?" - if this fails, Kubernetes RESTARTS the pod
+            httpGet:
+              path: /                     # Which URL path to check
+              port: 3000                     # Which port to check it on
+            initialDelaySeconds: 10          # Wait this long after startup before the first check
+            periodSeconds: 10                # How often to repeat the check
+            failureThreshold: 3              # How many consecutive failures before Kubernetes acts
+          readinessProbe:                   # "Is this pod ready for traffic?" - if this fails, it's REMOVED from the Service (not restarted)
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+          
+          securityContext:                              # Container-level security - more granular than pod-level
+            allowPrivilegeEscalation: false                # Stops the process gaining MORE privileges than it started with
+            readOnlyRootFilesystem: true                  # If true, the container can't write to its own filesystem at all
+            capabilities:
+              drop:
+                - ALL                                     # Drops Linux kernel capabilities - "ALL" removes every optional privilege

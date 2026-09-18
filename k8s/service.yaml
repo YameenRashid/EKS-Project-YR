@@ -1,0 +1,16 @@
+apiVersion: v1              # Services use the core v1 API, not apps/v1 like Deployments
+kind: Service                # Tells Kubernetes "manage this as a Service"
+metadata:
+  name: 2048-service          # A name for this Service - your Ingress will reference it by this name later
+  namespace: app              # Which namespace - must match where your Deployment's pods actually live
+  labels:                     # Labels on the Service object itself, same convention as the Deployment
+    app: 2048-app
+    environment: production
+    team: platform
+spec:
+  selector:
+    app: 2048-app             # Which pods to route to - must match your Deployment's pod label exactly
+  ports:
+    - protocol: TCP           # Explicit protocol - TCP is the default anyway, but stating it clearly
+      port: 80                # The port THIS SERVICE exposes internally - standard HTTP port, conventional choice
+      targetPort: 3000        # The port on the actual pod to forward traffic to - matches your app's real listening port
